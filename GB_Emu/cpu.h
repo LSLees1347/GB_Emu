@@ -26,4 +26,3 @@ struct Registers {
 
 void emulateCycle();
 void initCPU();
-;
