@@ -40,6 +40,23 @@ uint8_t dec8(uint8_t x)
 }
 
 
+void pushStack(uint8_t a, uint8_t b)
+{
+    regs.SP -= 1;
+    memory[regs.SP] = a;
+    regs.SP -= 1;
+    memory[regs.SP] = b;
+    return;
+}
+
+
+void error(uint8_t opcode)
+{
+    std::cerr << "invalid opcode: 0x" << std::hex << (int)opcode << "\n";
+    std::exit(1);
+}
+
+
 void emulateCycle() {
     uint8_t opcode = memory[regs.PC++];
 
@@ -48,24 +65,23 @@ void emulateCycle() {
     case 0x00: break; // nop
 
 
-        // byte increments
+        // byte increments / decrements
+    case 0x3C: regs.A = inc8(regs.A); break; // inc a
+    case 0x3D: regs.A = dec8(regs.A); break; // dec a
     case 0x04: regs.B = inc8(regs.B); break; // inc b
     case 0x05: regs.B = dec8(regs.B); break; // dec b
     case 0x0C: regs.C = inc8(regs.C); break; // inc c
     case 0x0D: regs.C = dec8(regs.C); break; // dec c
     case 0x14: regs.D = inc8(regs.D); break; // inc d
     case 0x15: regs.D = dec8(regs.D); break; // dec d
+    case 0x1C: regs.E = inc8(regs.E); break; // inc e
+    case 0x1D: regs.E = dec8(regs.E); break; // dec e
     case 0x24: regs.H = inc8(regs.H); break; // inc h
     case 0x25: regs.H = dec8(regs.H); break; // dec h
+    case 0x2C: regs.L = inc8(regs.L); break; // inc l
+    case 0x2D: regs.L = dec8(regs.L); break; // dec l
 
-        // load immediate byte
-    case 0x06: regs.B = memory[regs.PC++]; break; // ld b, n
-    case 0x0E: regs.C = memory[regs.PC++]; break; // ld c, n
-    case 0x16: regs.D = memory[regs.PC++]; break; // ld d, n
-    case 0x1E: regs.E = memory[regs.PC++]; break; // ld e, n
-    case 0x26: regs.H = memory[regs.PC++]; break; // ld h, n
-    case 0x2E: regs.L = memory[regs.PC++]; break; // ld l, n
-    case 0x3E: regs.A = memory[regs.PC++]; break; // ld a, n
+
 
 
         // 16 bit increments
@@ -75,30 +91,57 @@ void emulateCycle() {
         regs.setBC(++x);
         break;
     }
-
     case 0x13: // inc de
     {
         uint16_t x = regs.DE();
         regs.setDE(++x);
         break;
     }
-
     case 0x23: // inc hl
     {
         uint16_t x = regs.HL();
         regs.setHL(++x);
         break;
     }
+    case 0x33: { regs.SP++; break; } // inc sp
 
-    case 0x33: // inc sp
+
+             // 16 bit decrements
+    case 0x0B: // dec bc
     {
-        regs.SP++;
+        uint16_t x = regs.BC();
+        regs.setBC(--x);
         break;
     }
+    case 0x1B: // dec de
+    {
+        uint16_t x = regs.DE();
+        regs.setDE(--x);
+        break;
+    }
+    case 0x2B: // dec hl
+    {
+        uint16_t x = regs.HL();
+        regs.setHL(--x);
+        break;
+    }
+    case 0x3B: { regs.SP--; break; } // dec sp
 
 
 
-        // load immediate 16 bits
+
+
+             // load immediate byte
+    case 0x06: regs.B = memory[regs.PC++]; break; // ld b, n
+    case 0x0E: regs.C = memory[regs.PC++]; break; // ld c, n
+    case 0x16: regs.D = memory[regs.PC++]; break; // ld d, n
+    case 0x1E: regs.E = memory[regs.PC++]; break; // ld e, n
+    case 0x26: regs.H = memory[regs.PC++]; break; // ld h, n
+    case 0x2E: regs.L = memory[regs.PC++]; break; // ld l, n
+    case 0x3E: regs.A = memory[regs.PC++]; break; // ld a, n
+
+
+        // load immediate 2 bytes
     case 0x01: // ld bc, n
     {
         uint8_t lo = memory[regs.PC++];
@@ -127,8 +170,11 @@ void emulateCycle() {
         regs.SP = (hi << 8) | lo;
         break;
     }
- 
 
+
+
+    case 0x02: { memory[regs.BC()] = regs.A; break; } // ld (bc), a
+    case 0x12: { memory[regs.DE()] = regs.A; break; } // ld (de), a
 
 
 
@@ -156,16 +202,28 @@ void emulateCycle() {
 
 
 
-    case 0x2A: { regs.A = memory[regs.HL()]; regs.setHL(regs.HL() + 1); break; } // ld a, (hl+)
-    case 0x3A: { regs.A = memory[regs.HL()]; regs.setHL(regs.HL() - 1); break; } // ld a, (hl-)
-    case 0x22: { memory[regs.HL()] = regs.A; regs.setHL(regs.HL() + 1); break; } // ld (hl+), a
-    case 0x32: { memory[regs.HL()] = regs.A; regs.setHL(regs.HL() - 1); break; } // ld (hl-), a
-             
+    case 0x2A: {
+        regs.A = memory[regs.HL()];
+        regs.setHL(regs.HL() + 1); break;
+    } // ld a, (hl+)
+    case 0x3A: {
+        regs.A = memory[regs.HL()];
+        regs.setHL(regs.HL() - 1); break;
+    } // ld a, (hl-)
+    case 0x22: {
+        memory[regs.HL()] = regs.A;
+        regs.setHL(regs.HL() + 1); break;
+    } // ld (hl+), a
+    case 0x32: {
+        memory[regs.HL()] = regs.A;
+        regs.setHL(regs.HL() - 1); break;
+    } // ld (hl-), a
 
 
 
 
-             // ld a, r
+
+// ld a, r
     case 0x78: { regs.A = regs.B; break; } // ld a, b
     case 0x79: { regs.A = regs.C; break; } // ld a, c
     case 0x7A: { regs.A = regs.D; break; } // ld a, d
@@ -248,15 +306,47 @@ void emulateCycle() {
 
 
 
+    case 0xC5: { pushStack(regs.B, regs.C); break; } // push bc
+    case 0xD5: { pushStack(regs.D, regs.E); break; } // push de
+    case 0xE5: { pushStack(regs.H, regs.L); break; } // push hl
+    case 0xF5: { pushStack(regs.A, regs.F & 0xF0); break; } // push af
 
 
 
-    default:
-    {
-        std::cerr << "unknown opcode: 0x" << std::hex << (int)opcode << "\n";
-        std::exit(1);
-        break;
-    }
+
+
+
+
+    case 0xF1: { regs.A = memory[regs.SP++];
+        regs.F = memory[regs.SP++]; break; } // pop af
+
+
+
+
+
+
+
+
+
+
+
+
+    default: { error(opcode); break; }
+           /*
+           null inrange opcodes:
+           0xD3
+           0xE3
+           0xE4
+           0xF4
+           0xD3
+           0xDB
+           0xEB
+           0xEC
+           0xFC
+           0xDD
+           0xED
+           0xFD
+           */
 
     }
 }
