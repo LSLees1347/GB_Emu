@@ -40,13 +40,19 @@ uint8_t dec8(uint8_t x)
 }
 
 
-void pushStack(uint8_t a, uint8_t b)
+void pushStack(uint8_t hi, uint8_t lo)
 {
     regs.SP -= 1;
-    memory[regs.SP] = a;
+    memory[regs.SP] = hi;
     regs.SP -= 1;
-    memory[regs.SP] = b;
+    memory[regs.SP] = lo;
     return;
+}
+
+void popStack(uint8_t &hi, uint8_t &lo)
+{
+    hi = memory[regs.SP++];
+    lo = memory[regs.SP++];
 }
 
 
@@ -305,7 +311,7 @@ void emulateCycle() {
 
 
 
-
+             // push to stack
     case 0xC5: { pushStack(regs.B, regs.C); break; } // push bc
     case 0xD5: { pushStack(regs.D, regs.E); break; } // push de
     case 0xE5: { pushStack(regs.H, regs.L); break; } // push hl
@@ -313,12 +319,11 @@ void emulateCycle() {
 
 
 
-
-
-
-
-    case 0xF1: { regs.A = memory[regs.SP++];
-        regs.F = memory[regs.SP++]; break; } // pop af
+             // pop from stack
+    case 0xC1: { popStack(regs.B, regs.C); break; } // pop bc
+    case 0xD1: { popStack(regs.D, regs.E); break; } // pop de
+    case 0xE1: { popStack(regs.H, regs.L); break; } // pop hl
+    case 0xF1: { popStack(regs.A, regs.F); regs.F &= 0xF0b; break; } // pop af
 
 
 
