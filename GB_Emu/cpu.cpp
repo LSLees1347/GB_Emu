@@ -19,6 +19,7 @@ bool getFlagCarry() { return regs.F & 0x10; }
 void setFlagZero(bool c) { regs.F = (regs.F & ~0x80) | (c ? 0x80 : 0x00); }
 void setFlagSub(bool c) { regs.F = (regs.F & ~0x40) | (c ? 0x40 : 0x00); }
 void setFlagHalfCarry(bool c) { regs.F = (regs.F & ~0x20) | (c ? 0x20 : 0x00); }
+void setFlagCarry(bool c) { regs.F = (regs.F & ~0x10) | (c ? 0x10 : 0x00); }
 
 
 uint8_t inc8(uint8_t x)
@@ -53,6 +54,33 @@ void popStack(uint8_t &hi, uint8_t &lo)
 {
     hi = memory[regs.SP++];
     lo = memory[regs.SP++];
+}
+
+
+uint8_t add8(uint8_t a, uint8_t b)
+{
+    uint16_t sum = a + b;
+    regs.F = 0x00;
+
+    setFlagZero((sum & 0xFF) == 0);
+    setFlagSub(false);
+    setFlagHalfCarry(((a & 0xF) + (b & 0xF)) > 0xF);
+    setFlagCarry(sum > 0xFF);
+
+    return static_cast<uint8_t>(sum);
+}
+
+uint8_t sub8(uint8_t a, uint8_t b)
+{
+    uint8_t sum = a - b;
+    regs.F = 0x00;
+
+    setFlagZero(sum == 0);
+    setFlagSub(true);
+    setFlagHalfCarry((a & 0xF) < (b & 0xF));
+    setFlagCarry(a < b);
+
+    return sum;
 }
 
 
@@ -326,6 +354,26 @@ void emulateCycle() {
     case 0xF1: { popStack(regs.A, regs.F); regs.F &= 0xF0b; break; } // pop af
 
 
+
+
+
+             // add
+    case 0x87: { regs.A = add8(regs.A, regs.A); break; } // add a, a
+    case 0x80: { regs.A = add8(regs.A, regs.B); break; } // add a, b
+    case 0x81: { regs.A = add8(regs.A, regs.C); break; } // add a, c
+    case 0x82: { regs.A = add8(regs.A, regs.D); break; } // add a, d
+    case 0x83: { regs.A = add8(regs.A, regs.E); break; } // add a, e
+    case 0x84: { regs.A = add8(regs.A, regs.H); break; } // add a, h
+    case 0x85: { regs.A = add8(regs.A, regs.L); break; } // add a, l
+
+             // sub
+    case 0x97: { regs.A = sub8(regs.A, regs.A); break; } // sub a, a
+    case 0x90: { regs.A = sub8(regs.A, regs.B); break; } // sub a, b
+    case 0x91: { regs.A = sub8(regs.A, regs.C); break; } // sub a, c
+    case 0x92: { regs.A = sub8(regs.A, regs.D); break; } // sub a, d
+    case 0x93: { regs.A = sub8(regs.A, regs.E); break; } // sub a, e
+    case 0x94: { regs.A = sub8(regs.A, regs.H); break; } // sub a, h
+    case 0x95: { regs.A = sub8(regs.A, regs.L); break; } // sub a, l
 
 
 
