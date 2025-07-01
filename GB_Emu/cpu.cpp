@@ -83,6 +83,46 @@ uint8_t sub8(uint8_t a, uint8_t b)
     return sum;
 }
 
+uint8_t adc8(uint8_t a, uint8_t b)
+{
+    uint8_t carry = getFlagCarry() ? 0 : 1;
+    uint8_t sum = a + b + carry;
+    regs.F = 0x00;
+
+    setFlagZero((sum & 0xFF) == 0);
+    setFlagSub(false);
+    setFlagHalfCarry(((a & 0xF) + (b & 0xF) + carry) > 0xF);
+    setFlagCarry(sum > 0xFF);
+
+    return static_cast<uint8_t>(sum);
+}
+
+uint8_t and8(uint8_t a, uint8_t b)
+{
+    uint8_t result = a & b;
+    regs.F = 0;
+
+    setFlagZero(result == 0);
+    setFlagSub(false);
+    setFlagHalfCarry(true);
+    setFlagCarry(false);
+
+    return static_cast<uint8_t>(result);
+}
+
+uint8_t or8(uint8_t a, uint8_t b)
+{
+    uint8_t result = a | b;
+    regs.F = 0;
+
+    setFlagZero(result == 0);
+    setFlagSub(false);
+    setFlagHalfCarry(false);
+    setFlagCarry(false);
+
+    return static_cast<uint8_t>(result);
+}
+
 
 void error(uint8_t opcode)
 {
@@ -99,7 +139,7 @@ void emulateCycle() {
     case 0x00: break; // nop
 
 
-        // byte increments / decrements
+            // byte increments / decrements
     case 0x3C: regs.A = inc8(regs.A); break; // inc a
     case 0x3D: regs.A = dec8(regs.A); break; // dec a
     case 0x04: regs.B = inc8(regs.B); break; // inc b
@@ -118,7 +158,7 @@ void emulateCycle() {
 
 
 
-        // 16 bit increments
+            // 16 bit increments
     case 0x03: // inc bc
     {
         uint16_t x = regs.BC();
@@ -375,7 +415,57 @@ void emulateCycle() {
     case 0x94: { regs.A = sub8(regs.A, regs.H); break; } // sub a, h
     case 0x95: { regs.A = sub8(regs.A, regs.L); break; } // sub a, l
 
+             // adc
+    case 0x89: { adc8(regs.A, regs.B);  return; } // adc a, b
+    case 0x8A: { adc8(regs.A, regs.C); return; } // adc a, c
+    case 0x8B: { adc8(regs.A, regs.D); return; } // adc a, d
+    case 0x8C: { adc8(regs.A, regs.E); return; } // adc a, e
+    case 0x8D: { adc8(regs.A, regs.H); return; } // adc a, h
+    case 0x8E: { adc8(regs.A, regs.L); return; } // adc a, l
+    case 0x8F: { adc8(regs.A, regs.A); return; } // adc a, a
 
+             // and
+    case 0xA7: { regs.A = and8(regs.A, regs.B); return; } // and a, b
+    case 0xA0: { regs.A = and8(regs.A, regs.B); return; } // and a, b
+    case 0xA1: { regs.A = and8(regs.A, regs.C); return; } // and a, c
+    case 0xA2: { regs.A = and8(regs.A, regs.D); return; } // and a, d
+    case 0xA3: { regs.A = and8(regs.A, regs.E); return; } // and a, e
+    case 0xA4: { regs.A = and8(regs.A, regs.H); return; } // and a, h
+    case 0xA5: { regs.A = and8(regs.A, regs.L); return; } // and a, l
+
+             // or
+    case 0xB7: { regs.A = or8(regs.A, regs.A); return; } // or a, a
+    case 0xB0: { regs.A = or8(regs.A, regs.B); return; } // or a, b
+    case 0xB1: { regs.A = or8(regs.A, regs.C); return; } // or a, c
+    case 0xB2: { regs.A = or8(regs.A, regs.D); return; } // or a, d
+    case 0xB3: { regs.A = or8(regs.A, regs.E); return; } // or a, e
+    case 0xB4: { regs.A = or8(regs.A, regs.H); return; } // or a, h
+    case 0xB5: { regs.A = or8(regs.A, regs.L); return; } // or a, l
+
+
+    case 0xC6: // add a, n
+    { 
+        regs.A = regs.A & memory[++regs.PC];
+        regs.F = 0;
+
+        setFlagZero(regs.A == 0);
+        setFlagSub(false);
+        setFlagHalfCarry();
+        setFlagCarry();
+        return;
+    } 
+
+    case 0xD6: // sub a, n
+    {
+        regs.A = regs.A | memory[++regs.PC];
+        regs.F = 0;
+
+        setFlagZero(regs.A == 0);
+        setFlagSub(true);
+        setFlagHalfCarry();
+        setFlagCarry();
+        return;
+    }
 
 
 
