@@ -94,7 +94,7 @@ uint8_t adc8(uint8_t a, uint8_t b)
     setFlagHalfCarry(((a & 0xF) + (b & 0xF) + carry) > 0xF);
     setFlagCarry(sum > 0xFF);
 
-    return static_cast<uint8_t>(sum);
+    return sum;
 }
 
 uint8_t and8(uint8_t a, uint8_t b)
@@ -107,7 +107,7 @@ uint8_t and8(uint8_t a, uint8_t b)
     setFlagHalfCarry(true);
     setFlagCarry(false);
 
-    return static_cast<uint8_t>(result);
+    return result;
 }
 
 uint8_t or8(uint8_t a, uint8_t b)
@@ -120,7 +120,45 @@ uint8_t or8(uint8_t a, uint8_t b)
     setFlagHalfCarry(false);
     setFlagCarry(false);
 
-    return static_cast<uint8_t>(result);
+    return result;
+}
+
+uint8_t xor8(uint8_t a, uint8_t b)
+{
+    uint8_t result = a ^ b;
+    regs.F = 0;
+
+    setFlagZero(result == 0);
+    setFlagSub(false);
+    setFlagHalfCarry(false);
+    setFlagCarry(false);
+
+    return result;
+}
+
+void cp8(uint8_t a, uint8_t b)
+{
+    regs.F = 0;
+
+    setFlagZero(a - b == 0);
+    setFlagSub(true);
+    setFlagHalfCarry((a & 0xF) < (b & 0xF));
+    setFlagCarry(a < b);
+
+    return;
+}
+
+uint8_t sbc8(uint8_t a, uint8_t b)
+{
+    uint8_t result = a - b;
+    regs.F = 0;
+
+    setFlagZero(result == 0);
+    setFlagSub(true);
+    setFlagHalfCarry(/*(a & 0xF) < (b & 0xF)*/);
+    setFlagCarry(result > 0xFF);
+
+    return result;
 }
 
 
@@ -216,28 +254,28 @@ void emulateCycle() {
 
 
         // load immediate 2 bytes
-    case 0x01: // ld bc, n
+    case 0x01: // ld bc, u8
     {
         uint8_t lo = memory[regs.PC++];
         uint8_t hi = memory[regs.PC++];
         regs.setBC((hi << 8) | lo);
         break;
     }
-    case 0x11: // ld de, n
+    case 0x11: // ld de, u8
     {
         uint8_t lo = memory[regs.PC++];
         uint8_t hi = memory[regs.PC++];
         regs.setDE((hi << 8) | lo);
         break;
     }
-    case 0x21: // ld hl, n
+    case 0x21: // ld hl, u8
     {
         uint8_t lo = memory[regs.PC++];
         uint8_t hi = memory[regs.PC++];
         regs.setHL((hi << 8) | lo);
         break;
     }
-    case 0x31: // ld sp, n
+    case 0x31: // ld sp, u8
     {
         uint8_t lo = memory[regs.PC++];
         uint8_t hi = memory[regs.PC++];
@@ -297,7 +335,7 @@ void emulateCycle() {
 
 
 
-// ld a, r
+            // ld a, r
     case 0x78: { regs.A = regs.B; break; } // ld a, b
     case 0x79: { regs.A = regs.C; break; } // ld a, c
     case 0x7A: { regs.A = regs.D; break; } // ld a, d
@@ -405,6 +443,8 @@ void emulateCycle() {
     case 0x83: { regs.A = add8(regs.A, regs.E); break; } // add a, e
     case 0x84: { regs.A = add8(regs.A, regs.H); break; } // add a, h
     case 0x85: { regs.A = add8(regs.A, regs.L); break; } // add a, l
+    case 0x86: { regs.A = add8(regs.A, memory[regs.HL()]); break; } // add a, (hl)
+    case 0xC6: { regs.A = add8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // add a, u8
 
              // sub
     case 0x97: { regs.A = sub8(regs.A, regs.A); break; } // sub a, a
@@ -414,61 +454,67 @@ void emulateCycle() {
     case 0x93: { regs.A = sub8(regs.A, regs.E); break; } // sub a, e
     case 0x94: { regs.A = sub8(regs.A, regs.H); break; } // sub a, h
     case 0x95: { regs.A = sub8(regs.A, regs.L); break; } // sub a, l
+    case 0x96: { regs.A = sub8(regs.A, memory[regs.HL()]); break; } // sub a, (hl)
+    case 0xD6: { regs.A = sub8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // sub a, u8
 
              // adc
-    case 0x89: { adc8(regs.A, regs.B);  return; } // adc a, b
-    case 0x8A: { adc8(regs.A, regs.C); return; } // adc a, c
-    case 0x8B: { adc8(regs.A, regs.D); return; } // adc a, d
-    case 0x8C: { adc8(regs.A, regs.E); return; } // adc a, e
-    case 0x8D: { adc8(regs.A, regs.H); return; } // adc a, h
-    case 0x8E: { adc8(regs.A, regs.L); return; } // adc a, l
-    case 0x8F: { adc8(regs.A, regs.A); return; } // adc a, a
+    case 0x88: { regs.A = adc8(regs.A, regs.B); break; } // adc a, b
+    case 0x89: { regs.A = adc8(regs.A, regs.C); break; } // adc a, c
+    case 0x8A: { regs.A = adc8(regs.A, regs.D); break; } // adc a, d
+    case 0x8B: { regs.A = adc8(regs.A, regs.E); break; } // adc a, e
+    case 0x8C: { regs.A = adc8(regs.A, regs.H); break; } // adc a, h
+    case 0x8D: { regs.A = adc8(regs.A, regs.L); break; } // adc a, l
+    case 0x8F: { regs.A = adc8(regs.A, regs.A); break; } // adc a, a
+    case 0x8E: { regs.A = adc8(regs.A, memory[regs.HL()]); break; } // adc a, (hl)
+    case 0xCE: { regs.A = adc8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // adc a, u8
 
              // and
-    case 0xA7: { regs.A = and8(regs.A, regs.B); return; } // and a, b
-    case 0xA0: { regs.A = and8(regs.A, regs.B); return; } // and a, b
-    case 0xA1: { regs.A = and8(regs.A, regs.C); return; } // and a, c
-    case 0xA2: { regs.A = and8(regs.A, regs.D); return; } // and a, d
-    case 0xA3: { regs.A = and8(regs.A, regs.E); return; } // and a, e
-    case 0xA4: { regs.A = and8(regs.A, regs.H); return; } // and a, h
-    case 0xA5: { regs.A = and8(regs.A, regs.L); return; } // and a, l
+    case 0xA7: { regs.A = and8(regs.A, regs.A); break; } // and a, b
+    case 0xA0: { regs.A = and8(regs.A, regs.B); break; } // and a, b
+    case 0xA1: { regs.A = and8(regs.A, regs.C); break; } // and a, c
+    case 0xA2: { regs.A = and8(regs.A, regs.D); break; } // and a, d
+    case 0xA3: { regs.A = and8(regs.A, regs.E); break; } // and a, e
+    case 0xA4: { regs.A = and8(regs.A, regs.H); break; } // and a, h
+    case 0xA5: { regs.A = and8(regs.A, regs.L); break; } // and a, l
+    case 0xA6: { regs.A = and8(regs.A, memory[regs.HL()]); break; } // and a, (hl)
+    case 0xE6: { regs.A = and8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // and a, u8
 
              // or
-    case 0xB7: { regs.A = or8(regs.A, regs.A); return; } // or a, a
-    case 0xB0: { regs.A = or8(regs.A, regs.B); return; } // or a, b
-    case 0xB1: { regs.A = or8(regs.A, regs.C); return; } // or a, c
-    case 0xB2: { regs.A = or8(regs.A, regs.D); return; } // or a, d
-    case 0xB3: { regs.A = or8(regs.A, regs.E); return; } // or a, e
-    case 0xB4: { regs.A = or8(regs.A, regs.H); return; } // or a, h
-    case 0xB5: { regs.A = or8(regs.A, regs.L); return; } // or a, l
+    case 0xB7: { regs.A = or8(regs.A, regs.A); break; } // or a, a
+    case 0xB0: { regs.A = or8(regs.A, regs.B); break; } // or a, b
+    case 0xB1: { regs.A = or8(regs.A, regs.C); break; } // or a, c
+    case 0xB2: { regs.A = or8(regs.A, regs.D); break; } // or a, d
+    case 0xB3: { regs.A = or8(regs.A, regs.E); break; } // or a, e
+    case 0xB4: { regs.A = or8(regs.A, regs.H); break; } // or a, h
+    case 0xB5: { regs.A = or8(regs.A, regs.L); break; } // or a, l
+    case 0xB6: { regs.A = or8(regs.A, memory[regs.HL()]); break; } // or a, (hl)
+    case 0xF6: { regs.A = or8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // or a, u8
 
+             // xor
+    case 0xAF: { regs.A = xor8(regs.A, regs.A); break; } // xor a, a
+    case 0xA8: { regs.A = xor8(regs.A, regs.B); break; } // xor a, b
+    case 0xA9: { regs.A = xor8(regs.A, regs.C); break; } // xor a, c
+    case 0xAA: { regs.A = xor8(regs.A, regs.D); break; } // xor a, d
+    case 0xAB: { regs.A = xor8(regs.A, regs.E); break; } // xor a, e
+    case 0xAC: { regs.A = xor8(regs.A, regs.H); break; } // xor a, h
+    case 0xAD: { regs.A = xor8(regs.A, regs.L); break; } // xor a, l
+    case 0xAE: { regs.A = xor8(regs.A, memory[regs.HL()]); break; } // xor a, (hl)
+    case 0xEE: { regs.A = xor8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // xor a, u8
 
-    case 0xC6: // add a, n
-    { 
-        regs.A = regs.A & memory[++regs.PC];
-        regs.F = 0;
+             // cp
+    case 0xBF: { cp8(regs.A, regs.A); break; } // cp a, a
+    case 0xB8: { cp8(regs.A, regs.B); break; } // cp a, b
+    case 0xB9: { cp8(regs.A, regs.C); break; } // cp a, c
+    case 0xBA: { cp8(regs.A, regs.D); break; } // cp a, d
+    case 0xBB: { cp8(regs.A, regs.E); break; } // cp a, e
+    case 0xBC: { cp8(regs.A, regs.H); break; } // cp a, h
+    case 0xBD: { cp8(regs.A, regs.L); break; } // cp a, l
+    case 0xBE: { cp8(regs.A, memory[regs.HL()]); break; } // cp a, (hl)
+    case 0xFE: { cp8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // cp a, u8
 
-        setFlagZero(regs.A == 0);
-        setFlagSub(false);
-        setFlagHalfCarry();
-        setFlagCarry();
-        return;
-    } 
-
-    case 0xD6: // sub a, n
-    {
-        regs.A = regs.A | memory[++regs.PC];
-        regs.F = 0;
-
-        setFlagZero(regs.A == 0);
-        setFlagSub(true);
-        setFlagHalfCarry();
-        setFlagCarry();
-        return;
-    }
-
-
-
+             // sbc
+    case 0x98: { regs.A = sbc8(regs.A, regs.B); break; } // sbc a, b
+             // check this method pls
 
 
 
@@ -477,18 +523,12 @@ void emulateCycle() {
     default: { error(opcode); break; }
            /*
            null inrange opcodes:
-           0xD3
-           0xE3
-           0xE4
-           0xF4
-           0xD3
-           0xDB
-           0xEB
-           0xEC
-           0xFC
-           0xDD
-           0xED
-           0xFD
+           0xD3 0xE3
+           0xE4 0xF4
+           0xD3 0xDB
+           0xEB 0xEC
+           0xFC 0xDD
+           0xED 0xFD
            */
 
     }
