@@ -150,13 +150,14 @@ void cp8(uint8_t a, uint8_t b)
 
 uint8_t sbc8(uint8_t a, uint8_t b)
 {
-    uint8_t result = a - b;
+    uint8_t carry = getFlagCarry();
+    uint8_t result = a - b - carry;
     regs.F = 0;
 
     setFlagZero(result == 0);
     setFlagSub(true);
-    setFlagHalfCarry(/*(a & 0xF) < (b & 0xF)*/);
-    setFlagCarry(result > 0xFF);
+    setFlagHalfCarry((a & 0xF) < ((b & 0xF) + carry));
+    setFlagCarry(a < b + carry);
 
     return result;
 }
@@ -513,8 +514,15 @@ void emulateCycle() {
     case 0xFE: { cp8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // cp a, u8
 
              // sbc
+    case 0x9F: { regs.A = sbc8(regs.A, regs.A); break; } // sbc a, a
     case 0x98: { regs.A = sbc8(regs.A, regs.B); break; } // sbc a, b
-             // check this method pls
+    case 0x99: { regs.A = sbc8(regs.A, regs.C); break; } // sbc a, c
+    case 0x9A: { regs.A = sbc8(regs.A, regs.D); break; } // sbc a, d
+    case 0x9B: { regs.A = sbc8(regs.A, regs.E); break; } // sbc a, e
+    case 0x9C: { regs.A = sbc8(regs.A, regs.H); break; } // sbc a, h
+    case 0x9D: { regs.A = sbc8(regs.A, regs.L); break; } // sbc a, l
+    case 0x9E: { regs.A = sbc8(regs.A, memory[regs.HL()]); break; } // sbc a, (hl)
+    case 0xDE: { regs.A = sbc8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // sbc a, u8
 
 
 
