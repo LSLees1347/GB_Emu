@@ -459,13 +459,13 @@ void emulateCycle() {
     case 0xD6: { regs.A = sub8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // sub a, u8
 
              // adc
+    case 0x8F: { regs.A = adc8(regs.A, regs.A); break; } // adc a, a
     case 0x88: { regs.A = adc8(regs.A, regs.B); break; } // adc a, b
     case 0x89: { regs.A = adc8(regs.A, regs.C); break; } // adc a, c
     case 0x8A: { regs.A = adc8(regs.A, regs.D); break; } // adc a, d
     case 0x8B: { regs.A = adc8(regs.A, regs.E); break; } // adc a, e
     case 0x8C: { regs.A = adc8(regs.A, regs.H); break; } // adc a, h
     case 0x8D: { regs.A = adc8(regs.A, regs.L); break; } // adc a, l
-    case 0x8F: { regs.A = adc8(regs.A, regs.A); break; } // adc a, a
     case 0x8E: { regs.A = adc8(regs.A, memory[regs.HL()]); break; } // adc a, (hl)
     case 0xCE: { regs.A = adc8(regs.A, memory[regs.PC + 1]); regs.PC++; break; } // adc a, u8
 
