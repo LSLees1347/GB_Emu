@@ -528,6 +528,9 @@ void emulateCycle() {
 
 
 
+             // add cp dis call 
+
+
     default: { error(opcode); break; }
            /*
            null inrange opcodes:
