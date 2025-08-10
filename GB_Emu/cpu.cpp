@@ -528,7 +528,22 @@ void emulateCycle() {
 
 
 
-             // add cp dis call 
+    case 0x07: // rlca
+    {
+
+
+        setFlagZero(false);
+        setFlagSub(false);
+        setFlagHalfCarry(false);
+        setFlagCarry();
+        break;
+    }
+
+    case 0x17: { break; } // rla
+    case 0x0F: { break; } // rrca
+    case 0x1F: { break; } // rra
+
+
 
 
     default: { error(opcode); break; }
