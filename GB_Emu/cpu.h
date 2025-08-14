@@ -3,7 +3,8 @@
 
 extern struct Registers regs;
 
-struct Registers {
+struct Registers
+{
     uint8_t A, F;
     uint8_t B, C;
     uint8_t D, E;
@@ -25,4 +26,5 @@ struct Registers {
 };
 
 void emulateCycle();
-void initCPU();
+void bootSetup();
+void printCPUState();

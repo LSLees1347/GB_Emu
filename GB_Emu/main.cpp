@@ -2,18 +2,31 @@
 #include "cpu.h"
 #include "memory.h"
 
-int main() {
-    initMemory();
-    loadTestProgram();
+#include <thread>
+#include <chrono>
 
-    initCPU();
+
+int main(int argc, char* argv[])
+{
+    if (argc < 2)
+    {
+        std::cerr << "no rom entered";
+        return 1;
+    }
+
+    initMemory();
+    if (!loadROM(argv[1])) return 1;
+
+    bootSetup();
+    postBootSetup();
+
+
 
     for (int i = 0; i < 3; ++i) {
         emulateCycle();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
 
-    std::cout << "A = 0x" << std::hex << (int)regs.A << "\n";
-    std::cout << "B = 0x" << std::hex << (int)regs.B << "\n";
 
     return 0;
 }

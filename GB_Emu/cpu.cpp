@@ -6,7 +6,34 @@
 
 Registers regs;
 
-void initCPU() {
+
+void printCPUState()
+{
+    std::cout << "PC: 0x" << std::hex << regs.PC
+        << " | A: 0x" << (int)regs.A
+        << " | B: 0x" << (int)regs.B
+        << " | C: 0x" << (int)regs.C
+        << " | D: 0x" << (int)regs.D
+        << " | E: 0x" << (int)regs.E
+        << " | H: 0x" << (int)regs.H
+        << " | L: 0x" << (int)regs.L
+        << " | F: 0x" << (int)regs.F
+        << "\n";
+}
+
+
+
+void bootSetup()
+{
+    regs.A = 0x01;
+    regs.F = 0xB0; // z=1, n=0, h=1, c=1
+    regs.B = 0x00;
+    regs.C = 0x13;
+    regs.D = 0x00;
+    regs.E = 0xD8;
+    regs.H = 0x01;
+    regs.L = 0x4D;
+
     regs.PC = 0x0100;
     regs.SP = 0xFFFE;
 }
@@ -172,6 +199,9 @@ void error(uint8_t opcode)
 
 void emulateCycle() {
     uint8_t opcode = memory[regs.PC++];
+
+    std::cout << "Executing opcode 0x" << std::hex << (int)opcode << " at PC=0x" << regs.PC << "\n";
+    void printCPUState();
 
     switch (opcode) {
 
@@ -526,16 +556,15 @@ void emulateCycle() {
 
 
 
-
-
     case 0x07: // rlca
     {
-
+        uint8_t carry = (regs.A & 0x80) >> 7;
+        regs.A = static_cast<uint8_t>((regs.A << 1) | carry);
 
         setFlagZero(false);
         setFlagSub(false);
         setFlagHalfCarry(false);
-        setFlagCarry();
+        setFlagCarry(carry);
         break;
     }
 
